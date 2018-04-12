@@ -117,41 +117,32 @@ def ortho(geometry, normals, view):
 
 
 # Project geometry with isometric projection
-def perspective(persp, geometry, fz, phi, theta):
+def perspective(geometry):
 
-        if persp == 'iso':  # Isometric perspective (constant value for rotations - no variables)
-                phi = m.radians(45)  # Rotation about Y
-                theta = m.asin(m.tan(m.radians(30)))  # Rotation about X
+    phi = m.radians(45)  # Rotation about Y
+    theta = m.asin(m.tan(m.radians(30)))  # Rotation about X
 
-        if persp == 'di':  # Dimetric perspective (based on passed fz value)
-                theta = m.asin(fz/m.sqrt(2))  # Rotation about Y
-                phi = m.asin(fz/m.sqrt(2-fz*fz))  # Rotation about X
+    rot_1 = np.array([[m.cos(phi), 0.0, -1*m.sin(phi), 0.0],
+                      [0.0,        1.0, 0.0,           0.0],
+                      [m.sin(phi), 0.0, m.cos(phi),    0.0],
+                      [0.0,        0.0, 0.0,           1.0]])
+    rot_2 = np.array([[1.0, 0.0,             0.0,          0.0],
+                      [0.0, m.cos(theta),    m.sin(theta), 0.0],
+                      [0.0, -1*m.sin(theta), m.cos(theta), 0.0],
+                      [0.0, 0.0,             0.0,          1.0]])
+    flat = np.array([[1, 0, 0, 0],
+                     [0, 1, 0, 0],
+                     [0, 0, 0, 0],
+                     [0, 0, 0, 1]])
 
-        if persp == 'tri':  # Trimetric perspective (based on passed phi and theta values)
-                phi = m.radians(phi)  # Rotation about Y
-                theta = m.radians(theta)  # Rotation about X
+    # Apply transformations to the geometry for the chosen perspective
+    geometry = geometry.dot(rot_1)  # Rotation about Y
+    geometry = geometry.dot(rot_2)  # Rotation about X
+    geometry = geometry.dot(flat)  # Flatten to Z = 0
 
-        rot_1 = np.array([[m.cos(phi), 0.0, -1*m.sin(phi), 0.0],
-                          [0.0,        1.0, 0.0,           0.0],
-                          [m.sin(phi), 0.0, m.cos(phi),    0.0],
-                          [0.0,        0.0, 0.0,           1.0]])
-        rot_2 = np.array([[1.0, 0.0,             0.0,          0.0],
-                          [0.0, m.cos(theta),    m.sin(theta), 0.0],
-                          [0.0, -1*m.sin(theta), m.cos(theta), 0.0],
-                          [0.0, 0.0,             0.0,          1.0]])
-        flat = np.array([[1, 0, 0, 0],
-                         [0, 1, 0, 0],
-                         [0, 0, 0, 0],
-                         [0, 0, 0, 1]])
+    # Apply same rotations to camera vector (but in the opposite order)
+    camera = np.array([0, 0, -1, 1]).dot(rot_2)
+    camera = camera.dot(rot_1)
+    camera = np.array([camera[0], camera[1], -1*camera[2]])  # Camera vector for determining face orientation
 
-        # Apply transformations to the geometry for the chosen perspective
-        geometry = geometry.dot(rot_1)  # Rotation about Y
-        geometry = geometry.dot(rot_2)  # Rotation about X
-        geometry = geometry.dot(flat)  # Flatten to Z = 0
-
-        # Apply same rotations to camera vector (but in the opposite order)
-        camera = np.array([0, 0, -1, 1]).dot(rot_2)
-        camera = camera.dot(rot_1)
-        camera = np.array([camera[0], camera[1], -1*camera[2]])  # Camera vector for determining face orientation
-
-        return geometry, camera
+    return geometry, camera

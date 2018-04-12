@@ -5,6 +5,85 @@ import pygame
 import numpy as np
 import os
 import base64
+import gtransform
+import orient
+from drawlines import draw_lines
+
+
+# Class to draw an STL object from an ASCII STL file
+class DrawObject:
+    pxarray = []  # Initialize the pixel array variable to empty for the class
+
+    def __init__(self):
+        # Initiate new Loader class and run load_stl with the selected file
+        self.model = Loader()
+        self.model.load_stl(window.filename)
+
+    # Function to plot the initial object after loading
+    def initial_plot(self, loc):
+
+        self.model.geometry = orient.to_origin(self.model.geometry)
+        self.model.geometry = orient.fit_bed(self.model.geometry, xdim, ydim, zdim)
+        # Apply selected perspective with appropriate settings of fz, phi, and theta
+        plot_geometry, camera = gtransform.perspective(self.model.geometry)
+        # Draw lines between points and clip to viewing window based on window height and width
+        plot_geometry = draw_lines(plot_geometry, self.model.normal, camera, view.get(), embed_w, embed_h)
+
+        # Clear pixel array to white and then change each pixel color based on the XY pixel map
+        self.pxarray = pygame.PixelArray(loc)
+        self.pxarray[:][:] = (255, 255, 255)
+        for point in range(0, plot_geometry.shape[0]):
+            x = int(embed_w/2 + plot_geometry[point, 0])  # X coordinate (0,0 of screen is top left)
+            y = int(embed_h/2 + plot_geometry[point, 1])  # Y coordinate (0,0 of screen is top left)
+            # Plot all front facing lines and back facing when wireplot is selected
+            if plot_geometry[point, 2] == 1 or view.get() == 'wire':
+                self.pxarray[x][y] = (0, 0, 0)  # Color = black
+            # Plot grey lines only if grey lines are selected and the line is not already plotted black
+            elif plot_geometry[point, 2] == 0 and view.get() == 'grey' and self.pxarray[x][y] != 0:
+                self.pxarray[x][y] = (210, 210, 210)  # Color = grey
+        # Plot pixel array to screen and refresh window/GUI
+        pygame.surfarray.blit_array(loc, self.pxarray)
+        pygame.display.flip()
+        window.update()
+
+    # Function to re-plot the object with a specified transformation/perspective
+    def plot_transform(self, loc, transtype, data):
+
+        if transtype == 'ortho':
+            # Transform the original geometry according to the selected orthographic view
+            new_geometry, new_normals = gtransform.transform(self.model.geometry,
+                                                             self.model.normal, transtype,
+                                                             data)
+            # Draw lines between points and clip to viewing window based on window height and width
+            new_geometry = draw_lines(new_geometry, new_normals, [0, 0, 1], view.get(), embed_w,
+                                      embed_h)
+        else:
+            # Transform geometry based on the selected transformation
+            self.model.coordinates, self.model.normals = gtransform.transform(self.model.coordinates,
+                                                                              self.model.normals, transtype,
+                                                                              data)
+            # Apply selected perspective with appropriate settings of fz, phi, and theta
+            new_geometry, camera = gtransform.perspective(persp.get(), self.model.coordinates,
+                                                          fz.get(), phi.get(), theta.get())
+            # Draw lines between points and clip to viewing window
+            new_geometry = draw_lines(new_geometry, self.model.normals, camera,
+                                      view.get(), embed_w, embed_h)
+
+        # Clear pixel array to white and then change each pixel color based on the XY pixel map
+        self.pxarray[:][:] = (255, 255, 255)
+        for point in range(0, new_geometry.shape[0]):
+            x = int(embed_w/2 + new_geometry[point, 0])  # X coordinate (0,0 of screen is top left)
+            y = int(embed_h/2 + new_geometry[point, 1])  # Y coordinate (0,0 of screen is top left)
+            # Plot all front facing lines and back facing when wireplot is selected
+            if new_geometry[point, 2] == 1 or view.get() == 'wire':
+                self.pxarray[x][y] = (0, 0, 0)  # Color = black
+            # Plot grey lines only if grey lines are selected and the line is not already plotted black
+            elif new_geometry[point, 2] == 0 and view.get() == 'grey' and self.pxarray[x][y] != 0:
+                self.pxarray[x][y] = (210, 210, 210)  # Color = grey
+        # Plot pixel array to screen and refresh window/GUI
+        pygame.surfarray.blit_array(loc, self.pxarray)
+        pygame.display.flip()
+        window.update()
 
 
 # STL file loader class
@@ -41,11 +120,13 @@ class Loader:
                     if parts[0] == 'endloop':
                         self.geometry.append([triangle[0], triangle[1], triangle[2]])
                         self.normal.append(self.normal_face)
+                        print(self.normal)
+                        print(self.geometry)
         fp.close()
         # Convert lists to numpy arrays of the correct dimensions (Nx4 matrices)
         self.normal = np.asarray(self.normal).reshape((-1, 4))
         self.geometry = np.asarray(self.geometry).reshape((-1, 4))
-        self.geometry = orient(self.geometry, embed_w, embed_h)  # Orient object geometry in screen space
+        print(self.normal)
         window.title("STL Viewer Application - " + self.name)  # Put filename in the GUI header
 
 
@@ -58,15 +139,130 @@ def file_select():
     file_select.stlobject = DrawObject()  # Create new stlobject class for the selected file
     DrawObject.initial_plot(file_select.stlobject, screen)  # Run initial object plot function for the class
 
+
+# Class to create a perspective settings popup dialog box for user input
+class SettingsDialog:
+    def __init__(self, parent):
+        top = self.top = Toplevel(parent)  # Use Tkinter top for a separate popup GUI
+        top.geometry("240x200")  # Window dimensions
+        top.resizable(0, 0)  # Un-resizable
+        top.title('Perspective')  # Window title
+
+        # Code to assign an icon to the settings popup box using base64 stored image
+        icon = \
+            "AAABAAEAICAAAAEAIACoEAAAFgAAACgAAAAgAAAAQAAAAAEAIAAAAAAAABAAANcNAADXDQAAAAAAAAAA\
+            AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAZwAA\
+            AOkAAAD5AAAA+QAAAOUAAABVAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+            AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+            AAcAAACjAAAA/wAAAP8AAAD/AAAA/wAAAJAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+            AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+            AAAAAAAAAAAAHQAAANAAAAD/AAAA/wAAAP8AAAD/AAAAwwAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAQAA\
+            AAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADIAAACGAAAAQgAA\
+            AAMAAAAAAAAAAAAAAAwAAACEAAAA+wAAAP8AAAD/AAAA/wAAAP8AAAD5AAAAgAAAAA0AAAAAAAAAAAAA\
+            AAoAAABcAAAAlgAAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzAAAAyQAA\
+            AP8AAADjAAAAiwAAAFgAAABgAAAApwAAAPUAAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD1AAAArgAA\
+            AHAAAABvAAAApwAAAPEAAAD/AAAAyAAAADMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAA\
+            AMgAAAD/AAAA/wAAAP8AAAD+AAAA9wAAAPkAAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAA\
+            AP8AAAD/AAAA/QAAAP0AAAD/AAAA/wAAAP8AAAD/AAAAygAAADIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+            AAIAAACQAAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAA\
+            AP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAAhQAAAAAAAAAAAAAAAAAA\
+            AAAAAAAAAAAAAAAAAFQAAADuAAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAA\
+            AP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAOAAAAA/AAAAAAAA\
+            AAAAAAAAAAAAAAAAAAAAAAAAAAAABgAAAJwAAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAA\
+            AP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAAhgAA\
+            AAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAZgAAAPwAAAD/AAAA/wAAAP8AAAD/AAAA/wAA\
+            AP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAA\
+            APUAAABTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABsAAAA/QAAAP8AAAD/AAAA/wAA\
+            AP8AAAD/AAAA/wAAAP8AAAD2AAAA1gAAAK8AAACtAAAA0wAAAPUAAAD/AAAA/wAAAP8AAAD/AAAA/wAA\
+            AP8AAAD/AAAA+AAAAFwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAAAK0AAAD/AAAA/wAA\
+            AP8AAAD/AAAA/wAAAP8AAAD/AAAA2AAAAGUAAAAaAAAACgAAAAoAAAAZAAAAXwAAANQAAAD/AAAA/wAA\
+            AP8AAAD/AAAA/wAAAP8AAAD/AAAApgAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAgAAABYAAACBAAAA9gAA\
+            AP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAANkAAAA6AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANAAA\
+            ANQAAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD1AAAAhAAAABsAAAAGAAAAAAAAAFQAAACUAAAAxwAA\
+            APgAAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD4AAAAagAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+            AAAAAAAAAAAAYAAAAPYAAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD5AAAA0AAAAKQAAABnAAAA4AAA\
+            AP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAN0AAAAfAAAAAAAAAAAAAAAAAAAAAAAA\
+            AAAAAAAAAAAAAAAAAAAAAAAaAAAA1gAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAA\
+            AOIAAADpAAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAAuQAAAA4AAAAAAAAAAAAA\
+            AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAsAAACwAAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAA\
+            AP8AAAD/AAAA6AAAAOgAAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAC8AAAADwAA\
+            AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAAAALIAAAD/AAAA/wAAAP8AAAD/AAAA/wAA\
+            AP8AAAD/AAAA/wAAAP8AAADpAAAA4gAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAA\
+            AN8AAAAiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAAA2AAAAP8AAAD/AAAA/wAA\
+            AP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAOAAAABoAAAAqAAAANUAAAD6AAAA/wAAAP8AAAD/AAAA/wAA\
+            AP8AAAD/AAAA+gAAAHEAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGgAAAD4AAAA/wAA\
+            AP8AAAD/AAAA/wAAAP8AAAD/AAAA+AAAAMkAAACVAAAAVQAAAAEAAAAIAAAAIAAAAIkAAAD2AAAA/wAA\
+            AP8AAAD/AAAA/wAAAP8AAAD/AAAA3wAAAEQAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA+AAAA2gAA\
+            AP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAPYAAACCAAAAFwAAAAMAAAAAAAAAAAAAAAAAAAAAAAAADQAA\
+            AKcAAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA4AAAAHEAAAAhAAAADwAAAA8AAAAgAAAAbAAA\
+            ANwAAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAArgAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+            AAAAAAAAAAAAXQAAAPgAAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA+AAAAOAAAAC+AAAAvAAA\
+            AN4AAAD4AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP0AAABsAAAAAAAAAAAAAAAAAAAAAAAA\
+            AAAAAAAAAAAAAAAAAAAAAABTAAAA9QAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAA\
+            AP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/AAAAGYAAAAAAAAAAAAA\
+            AAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAIYAAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAA\
+            AP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAAnAAA\
+            AAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/AAAA4AAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAA\
+            AP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAA\
+            AP8AAADuAAAAVAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIUAAAD/AAAA/wAAAP8AAAD/AAAA/wAA\
+            AP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAA\
+            AP8AAAD/AAAA/wAAAP8AAACQAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMgAAAMoAAAD/AAAA/wAA\
+            AP8AAAD/AAAA/gAAAP0AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA+QAA\
+            APcAAAD+AAAA/wAAAP8AAAD/AAAAyAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMwAA\
+            AMgAAAD/AAAA8QAAAKcAAABvAAAAbwAAAK4AAAD1AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA9AAA\
+            AKYAAABgAAAAWAAAAIsAAADjAAAA/wAAAMkAAAAzAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+            AAAAAAAAAAAAMAAAAJYAAABcAAAACgAAAAAAAAAAAAAADQAAAIAAAAD5AAAA/wAAAP8AAAD/AAAA/wAA\
+            APoAAACDAAAADAAAAAAAAAAAAAAAAwAAAEAAAACFAAAAMgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+            AAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAFgAAAMMAAAD/AAAA/wAA\
+            AP8AAAD/AAAAzwAAABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+            AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAkAAA\
+            AP8AAAD/AAAA/wAAAP8AAACjAAAABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+            AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+            AAAAAABVAAAA4QAAAOoAAADoAAAA5AAAAGcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+            AAAAAAAAAAAAAAAAAAAAAAAA//gf///wD///8A8/+GAGH/AAAA/gAAAHwAAAB+AAAAfgAAAH8AAAD/AA\
+            AA/gAAAHgAfgAQAP8AAAD/AAAA/wAAAP8AAAD/AAAAfwAAAD4AHgAAAH8AAAD/AAAA/gAAAH4AAAB+AA\
+            AAPgAAAH8AAAD/hgBh/88A////AP///4H/8="
+
+        icodata = base64.b64decode(icon)  # Decode base64 image
+        temfile = "icon.ico"  # Create temporary file
+        icofile = open(temfile, "wb")  # Open temporary file
+        icofile.write(icodata)  # Write icon data
+        icofile.close()
+        top.wm_iconbitmap(temfile)  # Set window icon to the icon image
+        os.remove(temfile)
+
+        self.DiLabel = Label(top, text='Dimetric Settings').place(x=50, rely=.05, anchor="c")
+        self.fzLabel = Label(top, text='Fz').place(x=45, rely=.2, anchor="c")
+        self.phiLabel = Label(top, text='Phi').place(x=45, rely=.5, anchor="c")
+        self.thetaLabel = Label(top, text='Theta').place(x=45, rely=.65, anchor="c")
+        self.TriLabel = Label(top, text='Trimetric Settings').place(x=50, rely=.35, anchor="c")
+        self.fzBox = Entry(top)  # Fz entry box
+        self.fzBox.place(x=140, rely=.2, anchor="c")
+        self.fzBox.insert(0, fz.get())  # Prefill with Fz variable value
+        self.phiBox = Entry(top)  # Phi entry box
+        self.phiBox.place(x=140, rely=.5, anchor="c")
+        self.phiBox.insert(0, phi.get())  # Prefill with Phi variable value
+        self.thetaBox = Entry(top)  # Theta entry box
+        self.thetaBox.place(x=140, rely=.65, anchor="c")
+        self.thetaBox.insert(0, theta.get())  # Prefill with Theta variable value
+        # Save button, runs command to store/send variables back to the main window space
+        self.mySubmitButton = Button(top, text='Save', command=self.send).place(relx=.5, rely=.85, anchor="c")
+
+
+def save_click():
+    SettingsDialog(window)  # Create a new instance of the popup window class
+
+
 def about_popup():
     # Info box about the software from the Help menu
-    messagebox.showinfo('About STL Viewer',
-                        'Created by Evan Chodora, 2018\n\n Designed to open and view ASCII STL files')
+    messagebox.showinfo('About STL Slicer',
+                        'Created by Evan Chodora, 2018\n\n Designed to open and view ASCII STL files and perform'
+                        ' geometry slicing')
 
 # ****** Initialize Main Window ******
 
 window = Tk()
-window.title('STL Viewer Application')  # Main window title
+window.title('STL Slicer Application')  # Main window title
 
 # Code to embed base64 version of the window icon into the title bar
 cube = \
@@ -155,18 +351,20 @@ screen.fill((255, 255, 255))
 pygame.display.init()
 pygame.display.flip()
 
-# ****** Define Default Perspective Settings and View Type ******
+# ****** Define Default 3D Printing Options and View Type ******
 
-persp = StringVar()
-persp.set('iso')
 view = StringVar()
 view.set('hide')
-phi = DoubleVar()
-phi.set(45)
-theta = DoubleVar()
-theta.set(35)
-fz = DoubleVar()
-fz.set(0.375)
+# Dimensions of the print bed in mm
+xdim = DoubleVar()
+xdim.set(203.2)
+ydim = DoubleVar()
+ydim.set(152.4)
+zdim = DoubleVar()
+zdim.set(203.2)
+# Slice step size in mm
+slice_size = DoubleVar()
+slice_size.set(12.7)
 
 # ****** Toolbar ******
 
@@ -183,11 +381,6 @@ subMenu.add_command(label="Exit", command=window.destroy)
 # Create "Edit View" submenu
 subMenu = Menu(menu, tearoff=False)
 menu.add_cascade(label="Edit View", menu=subMenu)
-perspMenu = Menu(subMenu, tearoff=False)
-subMenu.add_cascade(label="Change Perspective", menu=perspMenu)
-perspMenu.add_radiobutton(label='Isometric', variable=persp, value='iso')  # Isometric projection
-perspMenu.add_radiobutton(label='Dimetric', variable=persp, value='di')  # Dimetric projection
-perspMenu.add_radiobutton(label='Trimetric', variable=persp, value='tri')  # Trimetric projection
 viewMenu = Menu(subMenu, tearoff=False)
 subMenu.add_cascade(label="View Type", menu=viewMenu)
 viewMenu.add_radiobutton(label='Wireframe', variable=view, value='wire')  # Full wireframe
