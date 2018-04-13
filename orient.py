@@ -34,7 +34,7 @@ def fit_bed(geometry, xdim, ydim, zdim):
     scale = min(xdim/max_size[0], ydim/max_size[1], zdim/max_size[2])
     geometry = gtransform.scale(geometry, 1 / scale)  # Apply global scaling with appropriate factor
 
-    max_size = np.max(geometry, axis=0)  # Max X,Y,Z values of the object
-    geometry = gtransform.translate(geometry, xdim/2, max_size[1], zdim/2)  # Translate object accordingly to origin
+    # max_size = np.max(geometry, axis=0)  # Max X,Y,Z values of the object
+    # geometry = gtransform.translate(geometry, xdim/2, max_size[1], zdim/2)  # Translate object into print bed center
 
     return geometry

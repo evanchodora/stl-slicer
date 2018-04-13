@@ -13,14 +13,12 @@ echodor@clemson.edu
 '''
 
 
-def draw_lines(geometry, normal, camera, view, width, height):
+def draw_lines(geometry, normal, camera, view):
         num_faces = int((geometry.shape[0])/3)  # Every 3 points represents a single face (length/3)
         geometry = np.around(geometry)  # Round geometry values to integer values for pixel mapping
         geometry = geometry.astype(int)  # Convert geometry matrix to integer data type
         geometry = geometry[:, 0:2]  # Specifically pull the X and Y coordinates - ignore Z and H
         points = []
-        xmin, xmax = 0 - (width - 100)/2, 0 + (width - 100)/2  # X extremes of the clipping region (50px inside)
-        ymin, ymax = 0 - (height - 100)/2, 0 + (height - 100)/2  # Y extremes of the clipping region (50px inside)
 
         for f in range(0, num_faces):  # Loop every each face in the geometry set
                 dot = np.dot(normal[f, 0:3], camera)  # Dot the outward surface normal with the camera vector
@@ -40,11 +38,8 @@ def draw_lines(geometry, normal, camera, view, width, height):
                                 [xy[2][0], xy[2][1], xy[0][0], xy[0][1]]]
                         for l in [0, 1, 2]:  # Loop each of the 3 lines of a face
                                 # Clip each line of the face based on the clipping window
-                                x1, y1, x2, y2 = clipping(line[l][0], line[l][1], line[l][2], line[l][3],
-                                                          xmin, xmax, ymin, ymax)
-                                if x1 != 9999:  # Check if line has any points within screen to draw
-                                        # Run line drawing algorithm on the 3 lines between face points
-                                        points.append(line_algo(x1, y1, x2, y2, front))
+                                x1, y1, x2, y2 = line[l][0], line[l][1], line[l][2], line[l][3]
+                                points.append(line_algo(x1, y1, x2, y2, front))
 
         points = [item for sublist in points for item in sublist]  # Flatten list sets into an array
         line_points = np.asarray(points).reshape((-1, 3))  # Reshape and convert to XY numpy array for plotting

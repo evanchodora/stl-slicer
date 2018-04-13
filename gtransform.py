@@ -6,8 +6,7 @@ Functions for the various geometric transformations and perspectives
  - Translation (X, Y, Z)
  - Rotation (about all 3 axes)
  - Global scaling (s value)
- - Perspective (isometric, dimetric, trimetric) with user-defined settings
- - Orthographic views (6)
+ - Perspective (isometric)
 
 Evan Chodora, 2018
 https://github.com/evanchodora/viewer
@@ -23,8 +22,6 @@ def transform(geometry, normals, transtype, data):
                 geometry, normals = rotation(geometry, normals, data[0], data[1])
         if transtype == 'zoom':
                 geometry = scale(geometry, data[0])
-        if transtype == 'ortho':
-                geometry, normals = ortho(geometry, normals, data)
         return geometry, normals
 
 
@@ -81,38 +78,6 @@ def rotation(geometry, normals, axis, ang):
                                                 [-1*s, c,   0.0, 0.0],
                                                 [0.0,  0.0, 1.0, 0.0],
                                                 [0.0,  0.0, 0.0, 1.0]]))
-        return geometry, normals
-
-
-# Flatten and rotate geometry according to type of orthographic view
-def ortho(geometry, normals, view):
-        mat = np.identity(4)  # Initialize transformation matrix
-
-        # Determine which of the 6 orthographic views is requested and apply the transformation/rotation
-        # Views are referenced according to the original geometry orientation (front = +Z, top = +Y, right = +X, etc.)
-        if view == 'top':
-                mat[1, 1] = 0
-                geometry = np.dot(geometry, mat)
-                geometry, normals = rotation(geometry, normals, 1, 90)
-        if view == 'bottom':
-                mat[1, 1] = 0
-                geometry = np.dot(geometry, mat)
-                geometry, normals = rotation(geometry, normals, 1, -90)
-        if view == 'right':
-                mat[0, 0] = 0
-                geometry = np.dot(geometry, mat)
-                geometry, normals = rotation(geometry, normals, 2, 90)
-        if view == 'left':
-                mat[0, 0] = 0
-                geometry = np.dot(geometry, mat)
-                geometry, normals = rotation(geometry, normals, 2, -90)
-        if view == 'front':
-                mat[2, 2] = 0
-                geometry = np.dot(geometry, mat)
-        if view == 'back':
-                mat[2, 2] = 0
-                geometry = np.dot(geometry, mat)
-                geometry, normals = rotation(geometry, normals, 2, 180)
         return geometry, normals
 
 

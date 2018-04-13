@@ -20,14 +20,14 @@ class DrawObject:
         self.model.load_stl(window.filename)
 
     # Function to plot the initial object after loading
-    def initial_plot(self, loc):
+    def plot(self, loc):
 
         self.model.geometry = orient.to_origin(self.model.geometry)
-        self.model.geometry = orient.fit_bed(self.model.geometry, xdim, ydim, zdim)
+        self.model.geometry = orient.fit_bed(self.model.geometry, xdim.get(), ydim.get(), zdim.get())
         # Apply selected perspective with appropriate settings of fz, phi, and theta
         plot_geometry, camera = gtransform.perspective(self.model.geometry)
         # Draw lines between points and clip to viewing window based on window height and width
-        plot_geometry = draw_lines(plot_geometry, self.model.normal, camera, view.get(), embed_w, embed_h)
+        plot_geometry = draw_lines(plot_geometry, self.model.normal, camera, view.get())
 
         # Clear pixel array to white and then change each pixel color based on the XY pixel map
         self.pxarray = pygame.PixelArray(loc)
@@ -46,44 +46,13 @@ class DrawObject:
         pygame.display.flip()
         window.update()
 
-    # Function to re-plot the object with a specified transformation/perspective
+    # Function to apply a specified transformation to the object
     def plot_transform(self, loc, transtype, data):
 
-        if transtype == 'ortho':
-            # Transform the original geometry according to the selected orthographic view
-            new_geometry, new_normals = gtransform.transform(self.model.geometry,
-                                                             self.model.normal, transtype,
-                                                             data)
-            # Draw lines between points and clip to viewing window based on window height and width
-            new_geometry = draw_lines(new_geometry, new_normals, [0, 0, 1], view.get(), embed_w,
-                                      embed_h)
-        else:
-            # Transform geometry based on the selected transformation
-            self.model.coordinates, self.model.normals = gtransform.transform(self.model.coordinates,
-                                                                              self.model.normals, transtype,
-                                                                              data)
-            # Apply selected perspective with appropriate settings of fz, phi, and theta
-            new_geometry, camera = gtransform.perspective(persp.get(), self.model.coordinates,
-                                                          fz.get(), phi.get(), theta.get())
-            # Draw lines between points and clip to viewing window
-            new_geometry = draw_lines(new_geometry, self.model.normals, camera,
-                                      view.get(), embed_w, embed_h)
-
-        # Clear pixel array to white and then change each pixel color based on the XY pixel map
-        self.pxarray[:][:] = (255, 255, 255)
-        for point in range(0, new_geometry.shape[0]):
-            x = int(embed_w/2 + new_geometry[point, 0])  # X coordinate (0,0 of screen is top left)
-            y = int(embed_h/2 + new_geometry[point, 1])  # Y coordinate (0,0 of screen is top left)
-            # Plot all front facing lines and back facing when wireplot is selected
-            if new_geometry[point, 2] == 1 or view.get() == 'wire':
-                self.pxarray[x][y] = (0, 0, 0)  # Color = black
-            # Plot grey lines only if grey lines are selected and the line is not already plotted black
-            elif new_geometry[point, 2] == 0 and view.get() == 'grey' and self.pxarray[x][y] != 0:
-                self.pxarray[x][y] = (210, 210, 210)  # Color = grey
-        # Plot pixel array to screen and refresh window/GUI
-        pygame.surfarray.blit_array(loc, self.pxarray)
-        pygame.display.flip()
-        window.update()
+        # Transform geometry based on the selected transformation
+        self.model.geometry, self.model.normal = gtransform.transform(self.model.geometry, self.model.normal, transtype,
+                                                                      data)
+        self.plot(screen)  # Rescale within print bed and plot the geometry for the new orientation
 
 
 # STL file loader class
@@ -99,6 +68,7 @@ class Loader:
         self.geometry = []  # Clear previous geometry data
         self.name = []  # Clear previous STL model name
         self.normal = []  # Clear previous STL normal data
+        triangle = []  # Initialize empty triangle set
         fp = open(filename, 'r')  # Open and read selected file into memory
 
         # Loop over each line in the STL file
@@ -108,36 +78,35 @@ class Loader:
                 # Start of filename, store embedded filename
                 if parts[0] == 'solid':
                     self.name = line[6:-1]
-                    # Beginning of a new face - store normals and begin new triangle variable
-                    if parts[0] == 'facet':
-                        triangle = []
-                        # Select face normal components
-                        self.normal_face = (float(parts[2]), float(parts[3]), float(parts[4]), 1)
-                    # Store all the vertex points in 'triangle'
-                    if parts[0] == 'vertex':
-                        triangle.append((float(parts[1]), float(parts[2]), float(parts[3]), 1))
-                    # End of face - append new face to the model data
-                    if parts[0] == 'endloop':
-                        self.geometry.append([triangle[0], triangle[1], triangle[2]])
-                        self.normal.append(self.normal_face)
-                        print(self.normal)
-                        print(self.geometry)
+                # Beginning of a new face - store normals and begin new triangle variable
+                if parts[0] == 'facet':
+                    triangle = []
+                    # Select face normal components
+                    self.normal_face = (float(parts[2]), float(parts[3]), float(parts[4]), 1)
+                # Store all the vertex points in 'triangle'
+                if parts[0] == 'vertex':
+                    triangle.append((float(parts[1]), float(parts[2]), float(parts[3]), 1))
+                # End of face - append new face to the model data
+                if parts[0] == 'endloop':
+                    self.geometry.append([triangle[0], triangle[1], triangle[2]])
+                    self.normal.append(self.normal_face)
         fp.close()
         # Convert lists to numpy arrays of the correct dimensions (Nx4 matrices)
         self.normal = np.asarray(self.normal).reshape((-1, 4))
         self.geometry = np.asarray(self.geometry).reshape((-1, 4))
-        print(self.normal)
-        window.title("STL Viewer Application - " + self.name)  # Put filename in the GUI header
+        window.title("STL Slicer Application - " + self.name)  # Put filename in the GUI header
 
 
 def file_select():
     # Function to select an STL file and store the path as "filename"
     window.filename = filedialog.askopenfilename(initialdir="C:\\", title="Select STL File",
                                                  filetypes=(("STL files", "*.STL"), ("All files", "*.*")))
-    status_text = "Opened: " + window.filename  # Add file name/path to bottom status bar
-    status.configure(text=status_text)
-    file_select.stlobject = DrawObject()  # Create new stlobject class for the selected file
-    DrawObject.initial_plot(file_select.stlobject, screen)  # Run initial object plot function for the class
+    # Check whether or not a file was selected or not
+    if window.filename:
+        status_text = "Opened: " + window.filename  # Add file name/path to bottom status bar
+        status.configure(text=status_text)
+        file_select.stlobject = DrawObject()  # Create new stlobject class for the selected file
+        DrawObject.plot(file_select.stlobject, screen)  # Run initial object plot function for the class
 
 
 # Class to create a perspective settings popup dialog box for user input
@@ -146,7 +115,7 @@ class SettingsDialog:
         top = self.top = Toplevel(parent)  # Use Tkinter top for a separate popup GUI
         top.geometry("240x200")  # Window dimensions
         top.resizable(0, 0)  # Un-resizable
-        top.title('Perspective')  # Window title
+        top.title('Settings')  # Window title
 
         # Code to assign an icon to the settings popup box using base64 stored image
         icon = \
@@ -231,7 +200,7 @@ class SettingsDialog:
         top.wm_iconbitmap(temfile)  # Set window icon to the icon image
         os.remove(temfile)
 
-        self.DiLabel = Label(top, text='Dimetric Settings').place(x=50, rely=.05, anchor="c")
+        self.DiLabel = Label(top, text='Slicer Settings').place(x=50, rely=.05, anchor="c")
         self.fzLabel = Label(top, text='Fz').place(x=45, rely=.2, anchor="c")
         self.phiLabel = Label(top, text='Phi').place(x=45, rely=.5, anchor="c")
         self.thetaLabel = Label(top, text='Theta').place(x=45, rely=.65, anchor="c")
@@ -259,10 +228,13 @@ def about_popup():
                         'Created by Evan Chodora, 2018\n\n Designed to open and view ASCII STL files and perform'
                         ' geometry slicing')
 
+
 # ****** Initialize Main Window ******
 
 window = Tk()
 window.title('STL Slicer Application')  # Main window title
+window.geometry("1100x720")  # Main overall window size
+window.resizable(0, 0)  # Scaling disallowed in X and Y
 
 # Code to embed base64 version of the window icon into the title bar
 cube = \
@@ -333,13 +305,10 @@ iconfile.close()
 window.wm_iconbitmap(tempfile)  # Set window icon to the icon image
 os.remove(tempfile)
 
-window.geometry("1200x800")  # Main overall window size
-window.resizable(0, 0)  # Scaling disallowed in X and Y
-
 # ****** Embed PyGame Window (Pixel Map Display) ******
 
-embed_w = 900  # Width of object display screen
-embed_h = 700  # Height of object display screen
+embed_w = 800  # Width of object display screen
+embed_h = 600  # Height of object display screen
 embed = Frame(window, width=embed_w, height=embed_h)  # Embed in the GUI window
 embed.place(x=50, y=40)  # Location of placement
 # Set appropriate environment variables for embedding the PyGame pixel display window in the GUI
@@ -380,30 +349,13 @@ subMenu.add_command(label="Exit", command=window.destroy)
 
 # Create "Edit View" submenu
 subMenu = Menu(menu, tearoff=False)
-menu.add_cascade(label="Edit View", menu=subMenu)
+menu.add_cascade(label="Edit", menu=subMenu)
 viewMenu = Menu(subMenu, tearoff=False)
 subMenu.add_cascade(label="View Type", menu=viewMenu)
 viewMenu.add_radiobutton(label='Wireframe', variable=view, value='wire')  # Full wireframe
 viewMenu.add_radiobutton(label='Hide Faces', variable=view, value='hide')  # Hide non-visible faces
 viewMenu.add_radiobutton(label='Partial Hidden', variable=view, value='grey')  # Grey hidden lines
-subMenu.add_command(label="Recenter Object", command=lambda: DrawObject.initial_plot(file_select.stlobject, screen))
-subMenu.add_command(label="Perspective Settings", command=save_click)
-
-# Create "Orthographic" submenu
-subMenu = Menu(menu, tearoff=False)
-menu.add_cascade(label="Orthographic", menu=subMenu)
-subMenu.add_command(label="Top", command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
-                                                                           'ortho', 'top'))
-subMenu.add_command(label="Bottom", command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
-                                                                              'ortho', 'bottom'))
-subMenu.add_command(label="Left", command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
-                                                                            'ortho', 'left'))
-subMenu.add_command(label="Right", command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
-                                                                             'ortho', 'right'))
-subMenu.add_command(label="Front", command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
-                                                                             'ortho', 'front'))
-subMenu.add_command(label="Back", command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
-                                                                            'ortho', 'back'))
+subMenu.add_command(label="Slicer Settings", command=save_click)
 
 # Create "Help" submenu
 subMenu = Menu(menu, tearoff=False)
@@ -413,61 +365,34 @@ subMenu.add_command(label="About", command=about_popup)
 # ****** Control Panel ******
 
 # Control text labels
-rotate = Label(window, text="Rotate", font=("Helvetica", 16))
-rotate.place(x=1075, rely=0.15, anchor="c")
-zoom = Label(window, text="Zoom", font=("Helvetica", 16))
-zoom.place(x=1075, rely=0.45, anchor="c")
-pan = Label(window, text="Pan", font=("Helvetica", 16))
-pan.place(x=1075, rely=0.65, anchor="c")
+orientation = Label(window, text="Print Orientation", font=("Helvetica", 16))
+orientation.place(x=975, rely=0.10, anchor="c")
+xaxis = Label(window, text="X", font=("Helvetica", 16))
+xaxis.place(x=975, rely=0.25, anchor="c")
+yaxis = Label(window, text="Y", font=("Helvetica", 16))
+yaxis.place(x=975, rely=0.50, anchor="c")
+zaxis = Label(window, text="Z", font=("Helvetica", 16))
+zaxis.place(x=975, rely=0.75, anchor="c")
 
 # Rotation buttons layout
-rot_l = Button(window, text="<-", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
-                                                                                     'rotation', [2, -15]))
-rot_l.place(x=1025, rely=.25, anchor="c")
-rot_r = Button(window, text="->", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
-                                                                                     'rotation', [2, 15]))
-rot_r.place(x=1125, rely=.25, anchor="c")
-rot_u = Button(window, text="/\\", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
-                                                                                      'rotation', [1, -15]))
-rot_u.place(x=1075, rely=.2, anchor="c")
-rot_d = Button(window, text="\\/", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
-                                                                                      'rotation', [1, 15]))
-rot_d.place(x=1075, rely=.3, anchor="c")
-
-# Zoom buttons layout
-zoom_in = Button(window, text="+", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
-                                                                                      'zoom', [0.8]))
-zoom_in.place(x=1025, rely=.5, anchor="c")
-zoom_out = Button(window, text="-", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
-                                                                                       'zoom', [1.25]))
-zoom_out.place(x=1125, rely=.5, anchor="c")
-
-# Panning buttons layout
-pan_l = Button(window, text="<-", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
-                                                                                     'translate', [-20, 0, 0]))
-pan_l.place(x=1025, rely=.75, anchor="c")
-pan_r = Button(window, text="->", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
-                                                                                     'translate', [20, 0, 0]))
-pan_r.place(x=1125, rely=.75, anchor="c")
-pan_u = Button(window, text="/\\", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
-                                                                                      'translate', [0, -20, 0]))
-pan_u.place(x=1075, rely=.7, anchor="c")
-pan_d = Button(window, text="\\/", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
-                                                                                      'translate', [0, 20, 0]))
-pan_d.place(x=1075, rely=.8, anchor="c")
-
-# ****** Keyboard Control Bindings ******
-
-window.bind("<Left>", lambda event: DrawObject.plot_transform(file_select.stlobject, screen, 'rotation', [2, -15]))
-window.bind("<Right>", lambda event: DrawObject.plot_transform(file_select.stlobject, screen, 'rotation', [2, 15]))
-window.bind("<Up>", lambda event: DrawObject.plot_transform(file_select.stlobject, screen, 'rotation', [1, -15]))
-window.bind("<Down>", lambda event: DrawObject.plot_transform(file_select.stlobject, screen, 'rotation', [1, 15]))
-window.bind("<a>", lambda event: DrawObject.plot_transform(file_select.stlobject, screen, 'translate', [-20, 0, 0]))
-window.bind("<d>", lambda event: DrawObject.plot_transform(file_select.stlobject, screen, 'translate', [20, 0, 0]))
-window.bind("<w>", lambda event: DrawObject.plot_transform(file_select.stlobject, screen, 'translate', [0, -20, 0]))
-window.bind("<s>", lambda event: DrawObject.plot_transform(file_select.stlobject, screen, 'translate', [0, 20, 0]))
-window.bind("<k>", lambda event: DrawObject.plot_transform(file_select.stlobject, screen, 'zoom', [0.8]))
-window.bind("<l>", lambda event: DrawObject.plot_transform(file_select.stlobject, screen, 'zoom', [1.25]))
+x_l = Button(window, text="<-", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
+                                                                                   'rotation', [3, -90]))
+x_l.place(x=925, rely=.25, anchor="c")
+x_r = Button(window, text="->", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
+                                                                                   'rotation', [3, 90]))
+x_r.place(x=1025, rely=.25, anchor="c")
+y_l = Button(window, text="<-", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
+                                                                                   'rotation', [1, -90]))
+y_l.place(x=925, rely=.50, anchor="c")
+y_r = Button(window, text="->", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
+                                                                                   'rotation', [1, 90]))
+y_r.place(x=1025, rely=.50, anchor="c")
+z_l = Button(window, text="<-", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
+                                                                                   'rotation', [2, 90]))
+z_l.place(x=925, rely=.75, anchor="c")
+z_r = Button(window, text="->", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
+                                                                                   'rotation', [2, -90]))
+z_r.place(x=1025, rely=.75, anchor="c")
 
 # ****** Status Bar ******
 
