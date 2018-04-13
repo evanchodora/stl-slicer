@@ -16,69 +16,69 @@ echodor@clemson.edu
 
 # Determine the transform that should be applied to the geometry (data is specific data for each transformation)
 def transform(geometry, normals, transtype, data):
-        if transtype == 'translate':
-                geometry = translate(geometry, data[0], data[1], data[2])
-        if transtype == 'rotation':
-                geometry, normals = rotation(geometry, normals, data[0], data[1])
-        if transtype == 'zoom':
-                geometry = scale(geometry, data[0])
-        return geometry, normals
+    if transtype == 'translate':
+        geometry = translate(geometry, data[0], data[1], data[2])
+    if transtype == 'rotation':
+        geometry, normals = rotation(geometry, normals, data[0], data[1])
+    if transtype == 'zoom':
+        geometry = scale(geometry, data[0])
+    return geometry, normals
 
 
 # Translate geometry by x, y, z
 def translate(geometry, x, y, z):
-        geometry = geometry.dot(np.array([[1.0, 0.0, 0.0, 0.0],
-                                          [0.0, 1.0, 0.0, 0.0],
-                                          [0.0, 0.0, 1.0, 0.0],
-                                          [x, y, z, 1.0]]))
-        return geometry
+    geometry = geometry.dot(np.array([[1.0, 0.0, 0.0, 0.0],
+                                      [0.0, 1.0, 0.0, 0.0],
+                                      [0.0, 0.0, 1.0, 0.0],
+                                      [x, y, z, 1.0]]))
+    return geometry
 
 
 # Scale geometry globally
 def scale(geometry, s):
-        scale_mat = np.array([[1.0, 0.0, 0.0, 0.0],
-                              [0.0, 1.0, 0.0, 0.0],
-                              [0.0, 0.0, 1.0, 0.0],
-                              [0.0, 0.0, 0.0, s]])
-        scale_mat = scale_mat/s  # Normalize such that s = 1 in the transformation matrix
-        geometry = geometry.dot(scale_mat)
-        return geometry
+    scale_mat = np.array([[1.0, 0.0, 0.0, 0.0],
+                          [0.0, 1.0, 0.0, 0.0],
+                          [0.0, 0.0, 1.0, 0.0],
+                          [0.0, 0.0, 0.0, s]])
+    scale_mat = scale_mat/s  # Normalize such that s = 1 in the transformation matrix
+    geometry = geometry.dot(scale_mat)
+    return geometry
 
 
 # Rotate geometry and the object outward normals about x, y, or z by an angle (in degrees)
 def rotation(geometry, normals, axis, ang):
-        ang = m.radians(ang)  # Convert angle to radians for computation
-        s = m.sin(ang)  # sine (radians)
-        c = m.cos(ang)  # cosine (radians)
+    ang = m.radians(ang)  # Convert angle to radians for computation
+    s = m.sin(ang)  # sine (radians)
+    c = m.cos(ang)  # cosine (radians)
 
-        if axis == 1:  # Rotation about x-axis
-                geometry = geometry.dot(np.array([[1.0, 0.0,  0.0, 0.0],
-                                                  [0.0, c,    s,   0.0],
-                                                  [0.0, -1*s, c,   0.0],
-                                                  [0.0, 0.0,  0.0, 1.0]]))
-                normals = normals.dot(np.array([[1.0, 0.0,  0.0, 0.0],
-                                                [0.0, c,    s,   0.0],
-                                                [0.0, -1*s, c,   0.0],
-                                                [0.0, 0.0,  0.0, 1.0]]))
-        if axis == 2:  # Rotation about y-axis
-                geometry = geometry.dot(np.array([[c,   0.0, -1*s, 0.0],
-                                                  [0.0, 1.0, 0.0,  0.0],
-                                                  [s,   0.0, c,    0.0],
-                                                  [0.0, 0.0, 0.0,  1.0]]))
-                normals = normals.dot(np.array([[c,   0.0, -1*s, 0.0],
-                                                [0.0, 1.0, 0.0,  0.0],
-                                                [s,   0.0, c,    0.0],
-                                                [0.0, 0.0, 0.0,  1.0]]))
-        if axis == 3:  # Rotation about z-axis
-                geometry = geometry.dot(np.array([[c,    s,   0.0, 0.0],
-                                                  [-1*s, c,   0.0, 0.0],
-                                                  [0.0,  0.0, 1.0, 0.0],
-                                                  [0.0,  0.0, 0.0, 1.0]]))
-                normals = normals.dot(np.array([[c,    s,   0.0, 0.0],
-                                                [-1*s, c,   0.0, 0.0],
-                                                [0.0,  0.0, 1.0, 0.0],
-                                                [0.0,  0.0, 0.0, 1.0]]))
-        return geometry, normals
+    if axis == 1:  # Rotation about x-axis
+        geometry = geometry.dot(np.array([[1.0, 0.0,  0.0, 0.0],
+                                          [0.0, c,    s,   0.0],
+                                          [0.0, -1*s, c,   0.0],
+                                          [0.0, 0.0,  0.0, 1.0]]))
+        normals = normals.dot(np.array([[1.0, 0.0,  0.0, 0.0],
+                                        [0.0, c,    s,   0.0],
+                                        [0.0, -1*s, c,   0.0],
+                                        [0.0, 0.0,  0.0, 1.0]]))
+    if axis == 2:  # Rotation about y-axis
+        geometry = geometry.dot(np.array([[c,   0.0, -1*s, 0.0],
+                                          [0.0, 1.0, 0.0,  0.0],
+                                          [s,   0.0, c,    0.0],
+                                          [0.0, 0.0, 0.0,  1.0]]))
+        normals = normals.dot(np.array([[c,   0.0, -1*s, 0.0],
+                                        [0.0, 1.0, 0.0,  0.0],
+                                        [s,   0.0, c,    0.0],
+                                        [0.0, 0.0, 0.0,  1.0]]))
+    if axis == 3:  # Rotation about z-axis
+        geometry = geometry.dot(np.array([[c,    s,   0.0, 0.0],
+                                          [-1*s, c,   0.0, 0.0],
+                                          [0.0,  0.0, 1.0, 0.0],
+                                          [0.0,  0.0, 0.0, 1.0]]))
+        normals = normals.dot(np.array([[c,    s,   0.0, 0.0],
+                                        [-1*s, c,   0.0, 0.0],
+                                        [0.0,  0.0, 1.0, 0.0],
+                                        [0.0,  0.0, 0.0, 1.0]]))
+    return geometry, normals
 
 
 # Project geometry with isometric projection
