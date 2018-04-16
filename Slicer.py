@@ -7,6 +7,7 @@ import os
 import base64
 import gtransform
 import orient
+import slice
 from drawlines import draw_lines
 
 
@@ -52,7 +53,25 @@ class DrawObject:
         # Transform geometry based on the selected transformation
         self.model.geometry, self.model.normal = gtransform.transform(self.model.geometry, self.model.normal, transtype,
                                                                       data)
-        self.plot(screen)  # Rescale within print bed and plot the geometry for the new orientation
+        self.plot(loc)  # Rescale within print bed and plot the geometry for the new orientation
+
+    # Function to run the slicer algorithm
+    def slice_geometry(self):
+        h = ydim.get()
+        step = slice_size.get()
+        num_steps = int(h/step)
+
+        for level in range(num_steps+2):
+            if level == 0:
+                z = round(level * step + 0.025, 2)
+            elif level == num_steps + 1:
+                z = round(level * step - 0.025, 2)
+            else:
+                z = round(level * step + 0.025, 2)
+            print(level)
+            print(z)
+            point_pairs = slice.compute_points_on_z(self.model.geometry, z, xdim.get(), ydim.get(), zdim.get())
+            slice.build_contours(point_pairs)
 
 
 # STL file loader class
@@ -326,14 +345,14 @@ view = StringVar()
 view.set('hide')
 # Dimensions of the print bed in mm
 xdim = DoubleVar()
-xdim.set(203.2)
+xdim.set(8*25.4)
 ydim = DoubleVar()
-ydim.set(152.4)
+ydim.set(6*25.4)
 zdim = DoubleVar()
-zdim.set(203.2)
+zdim.set(8*25.4)
 # Slice step size in mm
 slice_size = DoubleVar()
-slice_size.set(12.7)
+slice_size.set(0.5*25.4)
 
 # ****** Toolbar ******
 
@@ -356,6 +375,11 @@ viewMenu.add_radiobutton(label='Wireframe', variable=view, value='wire')  # Full
 viewMenu.add_radiobutton(label='Hide Faces', variable=view, value='hide')  # Hide non-visible faces
 viewMenu.add_radiobutton(label='Partial Hidden', variable=view, value='grey')  # Grey hidden lines
 subMenu.add_command(label="Slicer Settings", command=save_click)
+
+# Create "Help" submenu
+subMenu = Menu(menu, tearoff=False)
+menu.add_cascade(label="Slicer", menu=subMenu)
+subMenu.add_command(label="Run Slicer", command=lambda: DrawObject.slice_geometry(file_select.stlobject))
 
 # Create "Help" submenu
 subMenu = Menu(menu, tearoff=False)
