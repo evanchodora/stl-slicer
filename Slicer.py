@@ -62,12 +62,13 @@ class DrawObject:
         num_steps = int(h/step)
 
         for level in range(num_steps+2):
+            offset = 0.025  # Offset to handle first and last cuts (<0.001 in)
             if level == 0:
-                z = round(level * step + 0.025, 2)
+                z = round(level * step + offset, 2)
             elif level == num_steps + 1:
-                z = round(level * step - 0.025, 2)
+                z = round(level * step - offset, 2)
             else:
-                z = round(level * step + 0.025, 2)
+                z = round(level * step + offset, 2)
             print(level)
             print(z)
             point_pairs = slice.compute_points_on_z(self.model.geometry, z, xdim.get(), ydim.get(), zdim.get())

@@ -39,7 +39,7 @@ def interpolation(p1, p2, slice_z):
 def compute_points_on_z(geometry, z, xdim, ydim, zdim):
 
     geometry = geom_to_bed_coords(geometry, xdim, ydim, zdim)  # Position and size geometry correctly
-
+    geometry = np.around(geometry, 5)
     num_faces = int((geometry.shape[0]) / 3)  # Every 3 points represents a single face (length/3)
     geometry = geometry[:, 0:3]  # Specifically pull the X,Y,Z coordinates - ignore H
     points = []  # Initialize array of point pairs
@@ -81,6 +81,7 @@ def compute_points_on_z(geometry, z, xdim, ydim, zdim):
                 points.append(pairs)
     points = [item for sublist in points for item in sublist]  # Flatten list sets into an array
     edge_points = np.asarray(points).reshape((-1, 4))  # Reshape and convert to X1Y1, X2Y2 numpy array
+    edge_points = np.around(edge_points, 5)
     return edge_points
 
 
@@ -90,6 +91,7 @@ def build_contours(edge_points):
     tol = 0.005
     points_left = edge_points  # Initialize points that are remaining = original points
     tail = []
+    loop_cnt = 1
     while len(points_left) != 0:  # Loop over the point pairs and the index in the data array
         j = 1
         if not contours:  # First point pair needs to be added to the contour data
@@ -103,14 +105,18 @@ def build_contours(edge_points):
                 contours.append([pair[0], pair[1], pair[2], pair[3], contour_num])
                 points_left = np.delete(points_left, j-1, axis=0)
                 tail = [pair[2], pair[3]]
+                loop_cnt = 1
                 break
             if abs(pair[2] - tail[0]) < tol and abs(pair[3] - tail[1]) < tol:
                 contours.append([pair[2], pair[3], pair[0], pair[1], contour_num])
                 points_left = np.delete(points_left, j-1, axis=0)
                 tail = [pair[0], pair[1]]
+                loop_cnt = 1
                 break
             j = j + 1
-        if len(points_left) != 0 and abs(contours[0][0]-contours[-1][2]) < tol and abs(contours[0][1]-contours[-1][3]) < tol:
+        loop_cnt = loop_cnt + 1
+        if (len(points_left) != 0 and abs(contours[0][0]-contours[-1][2]) < tol and
+           abs(contours[0][1]-contours[-1][3]) < tol) or loop_cnt > 2*len(edge_points):
                 contour_num = contour_num + 1
                 pair = points_left[0, :]
                 contours.append([pair[0], pair[1], pair[2], pair[3], contour_num])
