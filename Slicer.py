@@ -8,6 +8,7 @@ import base64
 import gtransform
 import orient
 import slice
+import path
 from drawlines import draw_lines
 
 
@@ -61,17 +62,20 @@ class DrawObject:
         step = slice_size.get()
         num_steps = int(h/step)
 
+        # Loop over the number of slices through the print area based on the slice thickness selected
         for level in range(num_steps+2):
-            offset = 0.025  # Offset to handle first and last cuts (<0.001 in)
+            offset = 0.025  # Negligible offset to handle rounding error with first and last slice (<0.001 in)
             if level == 0:
                 z = round(level * step + offset, 2)
             elif level == num_steps + 1:
                 z = round(level * step - offset, 2)
             else:
                 z = round(level * step + offset, 2)
-            print(level)
-            print(z)
-            point_pairs = slice.compute_points_on_z(self.model.geometry, z, xdim.get(), ydim.get(), zdim.get())
+
+            # Rotate the object around the X-axis by 180deg to align with print bed coordinate system
+            geometry, normals = gtransform.rotation(self.model.geometry, self.model.normal, 1, 180)
+            point_pairs = slice.compute_points_on_z(geometry, z, xdim.get(), ydim.get(), zdim.get())
+            path.svgcreate(point_pairs, z)  # Output the slices to svg files for confirmation (optional)
             slice.build_contours(point_pairs)
 
 

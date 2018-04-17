@@ -19,7 +19,6 @@ def geom_to_bed_coords(geometry, xdim, ydim, zdim):
     # Scale geometry to fit within the bed dimensions (convert from viewing size to actual)
     scale = min(xdim/(2*max_size[0]), ydim/(2*max_size[1]), zdim/(2*max_size[2]))
     geometry = gtransform.scale(geometry, 1/scale)  # Apply global scaling with appropriate factor
-
     max_size = np.max(geometry, axis=0)  # Max X,Y,Z values of the object
     geometry = gtransform.translate(geometry, xdim/2, max_size[1], zdim/2)  # Translate object into print bed center
 
