@@ -58,6 +58,8 @@ class DrawObject:
 
     # Function to run the slicer algorithm
     def slice_geometry(self):
+
+        # Calculate slice thickness parameters
         h = ydim.get()
         step = slice_size.get()
         num_steps = int(h/step)
@@ -74,8 +76,11 @@ class DrawObject:
 
             # Rotate the object around the X-axis by 180deg to align with print bed coordinate system
             geometry, normals = gtransform.rotation(self.model.geometry, self.model.normal, 1, 180)
+            # Compute the clipped point pairs at the current slice z coordinate
             point_pairs = slice.compute_points_on_z(geometry, z, xdim.get(), ydim.get(), zdim.get())
-            path.svgcreate(point_pairs, z)  # Output the slices to svg files for confirmation (optional)
+            # Output the slices to svg files for confirmation (optional)
+            path.svgcreate(point_pairs, z, xdim.get())
+            # Run the contour building algorithm to sort the point pairs into continous contour sets
             slice.build_contours(point_pairs)
 
 
