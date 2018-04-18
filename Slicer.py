@@ -59,10 +59,16 @@ class DrawObject:
     # Function to run the slicer algorithm
     def slice_geometry(self):
 
-        # Calculate slice thickness parameters
+        # Calculate slice thickness/number of slices parameters
         h = ydim.get()
         step = slice_size.get()
         num_steps = int(h/step)
+
+        # Try to delete a path file if it exists
+        try:
+            os.remove('outputs/path.csv')
+        except OSError:
+            pass
 
         # Loop over the number of slices through the print area based on the slice thickness selected
         for level in range(num_steps+2):
@@ -81,7 +87,9 @@ class DrawObject:
             # Output the slices to svg files for confirmation (optional)
             path.svgcreate(point_pairs, z, xdim.get())
             # Run the contour building algorithm to sort the point pairs into continous contour sets
-            slice.build_contours(point_pairs)
+            contour = slice.build_contours(point_pairs)
+            # Create printer head path CSV file
+            path.headpath(contour, z)
 
 
 # STL file loader class
@@ -349,6 +357,53 @@ screen.fill((255, 255, 255))
 pygame.display.init()
 pygame.display.flip()
 
+# Code to load a base64 version of the coordinate axes to display on the GUI for the print bed coordinate system
+coords = \
+        "iVBORw0KGgoAAAANSUhEUgAAAHgAAABiCAYAAACbKRcvAAAABHNCS\
+        VQICAgIfAhkiAAAAAlwSFlzAAAHsgAAB7IBq3xA6wAAABl0RVh0U2\
+        9mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAWPSURBVHic7Z1\
+        tiBVVGMd/u+2au72Z+VbWmlSGBYaU9EKFxRa9aNSHhAo2MuiTskWQ\
+        QYV+s4JM6UtCEYh9sReWVmEhCYteyKwoFAwyIZOKrTZ1fSnT24dnh\
+        jtzZu7duXdn7rn73OcHw7Jz3p6d/5wzzzzn7BwwDMMwDMMHbb4NKJ\
+        ApwPYay2wDVhdgizc6fBtQIB3AtTWW2VOEIT5p922AUSyae/ARYFm\
+        V9OeAa5xzO4szx2gkfUDJOTZ7tcjIjRuAE8TF/Rbo9mmUkQ+zgF+I\
+        i/sHMNenUUY+dAKfEBf3JLDYo01Gjmwk+dxd4dUiIzceJSnuJq8WG\
+        blxI0mn6mugy6dRRj6kOVW/ARf7NMrIhzSn6l/gVp9GNRrNkw0rgN\
+        ecc8PAd2OUewAYLcQiD2gOVZ6dcm460DtGOVXXxCYblKPqbnUYAPb\
+        VUe5o3oYYRmGc4duABtODzBqVgN2ebWkIrfYMPhdYAszzbUijaDWB\
+        Ww4TWDkmsHJMYOWYwMoxgZVjAivHBFaOCawcE1g5JrByTGDlmMDKM\
+        YGVYwIrxwRWjgmsHBNYOSawckxg5ZjAyjGBlWMCK8cEVo4JrBwTWD\
+        kmsHJMYOWYwMoxgZVjAivHBFaOCawcE1g5JrByTGDltJrAZwY/p3q\
+        1wiiEpcB+5OuzJ4ENwHleLTJyYSHwMfJtrL+AdcBXlD8t/DitN5Kp\
+        4AKkl/4HnEK+8D4jSGsDHgR+pvyB8Fs82GjUQSfQD/yNiPcRsKBC3\
+        rOANcDxIO8gcGnhFhp104t8orCE9M6+jOUuB7YE5Y4CL5L+OWLDE/\
+        OArYhAo0ivnFxHPbcD3wf1HEBuEM0fTW96zkd62z/AaaQX9oyzzg7\
+        gCeTr8CVgB8k9Do2CaUd61++ICDuBm3JuYyqVnTSjQG5D9l0oAQcp\
+        fhidDwwF7Y0Aq4BJBbbXslyC9KIScAwZms9pYPtLgZ+C9n8A7mlg2\
+        6pJe5XxtZlkF9KDDwe2fAhc5cmWCU8bMvz+ilzMb2iePY9mI6PJaW\
+        Qvpg3Ix8aNjCwCPqe8/Ws/zbn9wCLgC8TOYZrXzqYhrWc0+4SAO9L\
+        sAm72alETouHZFvoKJyi/k8/xaVCzEPVO9zLxvdMriIc911BfVC0X\
+        fIbhFgLrEcdpBHgJeBUZmjXQi/x9VyNhz+fJtmfxAuBh59wWxMl06\
+        QJeID7duT04vJE2jTfdp0EFUsvMVsgkZCSL7pr6JemdcZWT7zBw0V\
+        hGrUcchfD4jMohulecvANUjvLU88dqodab+k6SO5Y/5OSZAvzp5Hk\
+        yizFzgUNOwYGUfPc5eU4hszFp9AJ7gnw/IpPtrYi7uqSfyvtHDhC/\
+        vvuJP8tfdtJ3I50oE8tJ3kHLIunTkOUu0fS1KfVcCWxj/NN42gjXh\
+        4WO5d0peXoQJy16jZ8J0manpC2u1YjQEwyPYWBmkPaOk7aL+NDsTu\
+        NtQrZbN8p0Izf8MeQavksySLKa5DN2JvCmc35zPQZMo/zyHh2q+5x\
+        zo0hPjRJGdz4Frqun8RYiDO68lZI2GdkiN3q9tyLP8vD3Q8CF9TZ+\
+        L9IDow0cd35fnlLuDsQpsNUQ2an0LHZ9Hfd4arwNv16l8vfGW7mRi\
+        XA5knvU5FhVohuZ/3QrP4D9h0CjuIzkyFlCFj/kwtsple9FxDcawz\
+        ri139HlkJZVvTfTzJ0BuJYpb0aGcVw0Pn9SJZCYwk8A9hYJX0lcFe\
+        Whgw/VBO4DXHdo2HKQeB9J88byHuvMcFYSXzMH0He2WYhYbZoWpZZ\
+        EmN8PE38mg+Op7L5lCMs4fFIJP0xkk5Xq8aXG0VuAnciC8mjlX2Qk\
+        m/IyTOMhSOLZAkSPg6PZ+utaC3pQ7PLHMpLbKrdCIZH3FBiO/JaFA\
+        167yN9NQHA9ST/F2iIjC68YRiGUY3/ARxUpOOUQIkQAAAAAElFTkS\
+        uQmCC"
+
+coordimg = PhotoImage(data=coords)
+image = Label(window, image=coordimg)
+image.place(x=975, rely=0.825, anchor="c")
+
 # ****** Define Default 3D Printing Options and View Type ******
 
 view = StringVar()
@@ -400,33 +455,33 @@ subMenu.add_command(label="About", command=about_popup)
 
 # Control text labels
 orientation = Label(window, text="Print Orientation", font=("Helvetica", 16))
-orientation.place(x=975, rely=0.10, anchor="c")
+orientation.place(x=975, rely=0.075, anchor="c")
 xaxis = Label(window, text="X", font=("Helvetica", 16))
-xaxis.place(x=975, rely=0.25, anchor="c")
+xaxis.place(x=975, rely=0.2, anchor="c")
 yaxis = Label(window, text="Y", font=("Helvetica", 16))
-yaxis.place(x=975, rely=0.50, anchor="c")
+yaxis.place(x=975, rely=0.40, anchor="c")
 zaxis = Label(window, text="Z", font=("Helvetica", 16))
-zaxis.place(x=975, rely=0.75, anchor="c")
+zaxis.place(x=975, rely=0.6, anchor="c")
 
 # Rotation buttons layout
 x_l = Button(window, text="<-", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
                                                                                    'rotation', [3, -90]))
-x_l.place(x=925, rely=.25, anchor="c")
+x_l.place(x=925, rely=.2, anchor="c")
 x_r = Button(window, text="->", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
                                                                                    'rotation', [3, 90]))
-x_r.place(x=1025, rely=.25, anchor="c")
+x_r.place(x=1025, rely=.2, anchor="c")
 y_l = Button(window, text="<-", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
                                                                                    'rotation', [1, -90]))
-y_l.place(x=925, rely=.50, anchor="c")
+y_l.place(x=925, rely=.40, anchor="c")
 y_r = Button(window, text="->", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
                                                                                    'rotation', [1, 90]))
-y_r.place(x=1025, rely=.50, anchor="c")
+y_r.place(x=1025, rely=.40, anchor="c")
 z_l = Button(window, text="<-", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
                                                                                    'rotation', [2, 90]))
-z_l.place(x=925, rely=.75, anchor="c")
+z_l.place(x=925, rely=.6, anchor="c")
 z_r = Button(window, text="->", width=5, command=lambda: DrawObject.plot_transform(file_select.stlobject, screen,
                                                                                    'rotation', [2, -90]))
-z_r.place(x=1025, rely=.75, anchor="c")
+z_r.place(x=1025, rely=.6, anchor="c")
 
 # ****** Status Bar ******
 
