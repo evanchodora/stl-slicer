@@ -122,5 +122,4 @@ def build_contours(edge_points):
                 tail = [pair[2], pair[3]]  # Tail is the second point of the line pair
                 points_left = np.delete(points_left, 0, axis=0)  # Remove the point pair from the array of points
     contours = np.asarray(contours).reshape((-1, 5))
-    print(contours)
     return contours
