@@ -7,7 +7,7 @@ Then scales the object to fit within a window of the width and height supplied b
 and a supplied screen width and height in pixels
 
 Evan Chodora, 2018
-https://github.com/evanchodora/viewer
+https://github.com/evanchodora/stl-slicer
 echodor@clemson.edu
 '''
 

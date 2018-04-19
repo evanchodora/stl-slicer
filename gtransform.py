@@ -9,7 +9,7 @@ Functions for the various geometric transformations and perspectives
  - Perspective (isometric)
 
 Evan Chodora, 2018
-https://github.com/evanchodora/viewer
+https://github.com/evanchodora/stl-slicer
 echodor@clemson.edu
 '''
 

@@ -8,7 +8,7 @@ Code to draw lines between vertices of STL faces
  - Draws lines using a version of the Bresenham's Line Algorithm between every face point
 
 Evan Chodora, 2018
-https://github.com/evanchodora/viewer
+https://github.com/evanchodora/stl-slicer
 echodor@clemson.edu
 '''
 
