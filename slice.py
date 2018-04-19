@@ -53,6 +53,7 @@ def compute_points_on_z(geometry, z, xdim, ydim, zdim):
                 [xy[1][2], xy[1][0], xy[1][1]],
                 [xy[2][2], xy[2][0], xy[2][1]]]
 
+        # If a line segment bounds the z slice plane:
         if (line[1][2] < z < line[0][2]) or (line[0][2] < z < line[1][2]):
             p1 = [line[0][0], line[0][1], line[0][2]]
             p2 = [line[1][0], line[1][1], line[1][2]]
@@ -68,17 +69,22 @@ def compute_points_on_z(geometry, z, xdim, ydim, zdim):
             p2 = [line[2][0], line[2][1], line[2][2]]
             pairs.append(interpolation(p1, p2, z))
 
+        #
         if line[0][2] == z:
             pairs.append([line[0][0], line[0][1]])
         elif line[1][2] == z:
             pairs.append([line[1][0], line[1][1]])
         elif line[2][2] == z:
             pairs.append([line[2][0], line[2][1]])
+
+        # Only need to keep point pairs (1 and 3 are not needed - handled by other vertices in the object)
         if len(pairs) == 2:
+            # Reject points if they are the same (within tolerance) - not a path pair for printing
             if abs(pairs[0][0] - pairs[1][0]) < tol and abs(pairs[0][1] - pairs[1][1]) < tol:
                 pass
             else:
                 points.append(pairs)
+
     points = [item for sublist in points for item in sublist]  # Flatten list sets into an array
     edge_points = np.asarray(points).reshape((-1, 4))  # Reshape and convert to X1,Y1,X2,Y2 numpy array
     edge_points = np.around(edge_points, 5)
