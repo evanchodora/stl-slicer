@@ -11,6 +11,14 @@ import slice
 import path
 from drawlines import draw_lines
 
+'''
+Program designed to open and view ASCII STL files
+
+Evan Chodora, 2018
+https://github.com/evanchodora/stl-slicer
+echodor@clemson.edu
+'''
+
 
 # Class to draw an STL object from an ASCII STL file
 class DrawObject:
@@ -84,9 +92,13 @@ class DrawObject:
             geometry, normals = gtransform.rotation(self.model.geometry, self.model.normal, 1, 180)
             # Compute the clipped point pairs at the current slice z coordinate
             point_pairs = slice.compute_points_on_z(geometry, z, xdim.get(), ydim.get(), zdim.get())
-            # Output the slices to svg files for confirmation (optional)
-            path.svgcreate(point_pairs, z, xdim.get())
-            # Run the contour building algorithm to sort the point pairs into continous contour sets
+            # Create infill paths (X direction)
+            fillx = slice.infill(point_pairs, 0, 0.25*25.4)
+            # Create infill path (Y direction)
+            filly = slice.infill(point_pairs, 1, 0.25*25.4)
+            # Output the slices to svg files for confirmation/viewing
+            path.svgcreate(point_pairs, z, xdim.get(), fillx, filly)
+            # Run the contour building algorithm to sort the point pairs into continuous contour sets
             contour = slice.build_contours(point_pairs)
             # Create printer head path CSV file
             path.headpath(contour, z)
@@ -263,7 +275,7 @@ def about_popup():
     # Info box about the software from the Help menu
     messagebox.showinfo('About STL Slicer',
                         'Created by Evan Chodora, 2018\n\n Designed to open and view ASCII STL files and perform'
-                        ' geometry slicing')
+                        ' geometry slicing and 3D printer path generation')
 
 
 # ****** Initialize Main Window ******
