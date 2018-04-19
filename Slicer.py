@@ -72,15 +72,16 @@ class DrawObject:
         step = slice_size.get()
         num_steps = int(h/step)
 
-        # Try to delete a path file if it exists
+        # Try to delete previous output files (SVGs and path CSV) if they exist
+        outputdir = 'outputs'
         try:
-            os.remove('outputs/path.csv')
+            list(map(os.unlink, (os.path.join(outputdir, f) for f in os.listdir(outputdir))))
         except OSError:
             pass
 
         # Loop over the number of slices through the print area based on the slice thickness selected
         for level in range(num_steps+2):
-            offset = 0.025  # Negligible offset to handle rounding error with first and last slice (<0.001 in)
+            offset = 0.01  # Negligible offset to handle rounding error with first and last slice (<0.001 in)
             if level == 0:
                 z = round(level * step + offset, 2)
             elif level == num_steps + 1:
@@ -93,15 +94,15 @@ class DrawObject:
             # Compute the clipped point pairs at the current slice z coordinate
             point_pairs = slice.compute_points_on_z(geometry, z, xdim.get(), ydim.get(), zdim.get())
             # Create infill paths (X direction)
-            fillx = slice.infill(point_pairs, 0, 0.25*25.4)
+            fillx = slice.infill(point_pairs, 0, infill_space.get())
             # Create infill path (Y direction)
-            filly = slice.infill(point_pairs, 1, 0.25*25.4)
+            filly = slice.infill(point_pairs, 1, infill_space.get())
             # Output the slices to svg files for confirmation/viewing
             path.svgcreate(point_pairs, z, xdim.get(), fillx, filly)
             # Run the contour building algorithm to sort the point pairs into continuous contour sets
             contour = slice.build_contours(point_pairs)
-            # Create printer head path CSV file
-            path.headpath(contour, z)
+            # Create printer head path CSV file (main path and infill pattern)
+            path.headpath(contour, fillx, filly, z)
 
 
 # STL file loader class
@@ -249,22 +250,24 @@ class SettingsDialog:
         top.wm_iconbitmap(temfile)  # Set window icon to the icon image
         os.remove(temfile)
 
-        self.DiLabel = Label(top, text='Slicer Settings').place(x=50, rely=.05, anchor="c")
-        self.fzLabel = Label(top, text='Fz').place(x=45, rely=.2, anchor="c")
-        self.phiLabel = Label(top, text='Phi').place(x=45, rely=.5, anchor="c")
-        self.thetaLabel = Label(top, text='Theta').place(x=45, rely=.65, anchor="c")
-        self.TriLabel = Label(top, text='Trimetric Settings').place(x=50, rely=.35, anchor="c")
-        self.fzBox = Entry(top)  # Fz entry box
-        self.fzBox.place(x=140, rely=.2, anchor="c")
-        self.fzBox.insert(0, fz.get())  # Prefill with Fz variable value
-        self.phiBox = Entry(top)  # Phi entry box
-        self.phiBox.place(x=140, rely=.5, anchor="c")
-        self.phiBox.insert(0, phi.get())  # Prefill with Phi variable value
-        self.thetaBox = Entry(top)  # Theta entry box
-        self.thetaBox.place(x=140, rely=.65, anchor="c")
-        self.thetaBox.insert(0, theta.get())  # Prefill with Theta variable value
+        self.NameLabel = Label(top, text='Slicer Settings').place(x=50, rely=.1, anchor="c")
+        self.zLabel = Label(top, text='Slice Height (in)').place(x=55, rely=.3, anchor="c")
+        self.InfillLabel = Label(top, text='Infill Spacing (in)').place(x=55, rely=.6, anchor="c")
+        self.zBox = Entry(top)  # Fz entry box
+        self.zBox.place(x=165, rely=.3, anchor="c", width=100)
+        self.zBox.insert(0, slice_size.get()/25.4)  # Prefill with Slice Height variable value (inches)
+        self.InfillBox = Entry(top)  # Phi entry box
+        self.InfillBox.place(x=165, rely=.6, anchor="c", width=100)
+        self.InfillBox.insert(0, infill_space.get()/25.4)  # Prefill with infill grid spacing variable value (inches)
+
         # Save button, runs command to store/send variables back to the main window space
         self.mySubmitButton = Button(top, text='Save', command=self.send).place(relx=.5, rely=.85, anchor="c")
+
+    def send(self):
+        # Update main window variables with those filled in the entry boxes
+        slice_size.set(float(self.zBox.get())*25.4)
+        infill_space.set(float(self.InfillBox.get())*25.4)
+        self.top.destroy()  # Destroy popup window and return to main window loop
 
 
 def save_click():
@@ -430,6 +433,9 @@ zdim.set(8*25.4)
 # Slice step size in mm
 slice_size = DoubleVar()
 slice_size.set(0.5*25.4)
+# Infill grid spacing in mm
+infill_space = DoubleVar()
+infill_space.set(0.5*25.4)
 
 # ****** Toolbar ******
 
