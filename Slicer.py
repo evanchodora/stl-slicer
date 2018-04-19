@@ -104,6 +104,12 @@ class DrawObject:
             # Create printer head path CSV file (main path and infill pattern)
             path.headpath(contour, fillx, filly, z)
 
+        # Info box to give information when the slicer is completed
+        messagebox.showinfo('Slicing Complete!',
+                            'The slicer has completed slicing the model successfully! \n\n'
+                            'Check the created "outputs" folder for an SVG file of each slice of the model and '
+                            ' the "path.csv" file for the print head coordinate instructions')
+
 
 # STL file loader class
 class Loader:
