@@ -15,7 +15,7 @@ echodor@clemson.edu
 
 def svgcreate(pairs, z, ymax, fillx, filly):
     # Create a new SVG file with the file name as the z-coordinate of the slice
-    dwg = svgwrite.Drawing('outputs/' + str(z) + '.svg', profile='tiny')
+    dwg = svgwrite.Drawing('outputs/' + str(z) + '.svg')
 
     # Create lines for the geometry segments sliced on the given z-plane
     for pair in pairs:

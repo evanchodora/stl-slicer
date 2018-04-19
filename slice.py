@@ -147,7 +147,7 @@ def infill(pairs, dir, spacing):
 
         num_passes = int((max_pos - min_pos)/spacing)  # Number of infill lines to cover the object
 
-        for fill_pass in range(num_passes):
+        for fill_pass in range(num_passes+1):
             loc = min_pos + fill_pass*spacing  # Increment fill pass position by the infill spacing variable
             pts = []
             for segment in pairs:
