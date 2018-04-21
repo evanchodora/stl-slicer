@@ -14,8 +14,8 @@ echodor@clemson.edu
 
 
 def svgcreate(pairs, z, ymax, fillx, filly):
-    # Create a new SVG file with the file name as the z-coordinate of the slice
-    dwg = svgwrite.Drawing('outputs/' + str(z) + '.svg')
+    # Create a new SVG file with the file name as the z-coordinate (inches) of the slice
+    dwg = svgwrite.Drawing('outputs/' + str(round(z/25.4, 3)) + '.svg')
 
     # Create lines for the geometry segments sliced on the given z-plane
     for pair in pairs:
@@ -42,6 +42,10 @@ def headpath(contour, fillx, filly, z):
     # On/Off denoted by a 1 or 0, respectively
     # 1 = extruder printing when moving to that coordinate from previous print head position
     # 0 = extruder off when moving to that coordinate from previous print head position
+
+    c = 25.4  # Conversion from mm to in
+    d = 4  # Number of decimals places to round the coordinates
+
     if len(contour) != 0:
         contour_num = 1
         start = 1  # Indicates the start of a contour to handle contour looping
@@ -55,37 +59,37 @@ def headpath(contour, fillx, filly, z):
                 if segment[4] == contour_num:
                     if start == 1:
                         begin = [segment[0], segment[1]]  # Store the start of the contour
-                        row = [segment[0], segment[1], z, 0]
+                        row = [round(segment[0]/c, d), round(segment[1]/c, d), round(z/c, d), 0]
                         path_writer.writerow(row)
                         start = 0
                     else:
-                        row = [segment[0], segment[1], z, 1]
+                        row = [round(segment[0]/c, d), round(segment[1]/c, d), round(z/c, d), 1]
                         path_writer.writerow(row)
                 else:
                     # Add the beginning coordinate to the end of a contour to complete the contour
                     contour_num = segment[4]
-                    row1 = [begin[0], begin[1], z, 1]  # End of the previous contour
-                    row2 = [segment[0], segment[1], z, 0]  # Start of the next contour
+                    row1 = [round(begin[0]/c, d), round(begin[1]/c, d), round(z/c, d), 1]  # End of previous contour
+                    row2 = [round(segment[0]/c, d), round(segment[1]/c, d), round(z/c, d), 0]  # Start of next contour
                     path_writer.writerow(row1)
                     path_writer.writerow(row2)
                     begin = [segment[0], segment[1]]  # Store the start of the contour
             # Write the last stored begin point to the end of the contour to print the entire loop
-            row = [begin[0], begin[1], z, 1]
+            row = [round(begin[0]/c, d), round(begin[1]/c, d), round(z/c, d), 1]
             path_writer.writerow(row)
 
             # Print the position directions for the calculated infill patterns
             for fill_line in fillx:
                 # Loop over points for each fill line in X (always even number)
                 for pts in range(int(len(fill_line[1])/2)):
-                    row1 = [fill_line[0], fill_line[1][2*pts], z, 0]
-                    row2 = [fill_line[0], fill_line[1][2*pts+1], z, 1]
+                    row1 = [round(fill_line[0]/c, d), round(fill_line[1][2*pts]/c, d), round(z/c, d), 0]
+                    row2 = [round(fill_line[0]/c, d), round(fill_line[1][2*pts+1]/c, d), round(z/c, d), 1]
                     path_writer.writerow(row1)
                     path_writer.writerow(row2)
             for fill_line in filly:
                 # Loop over points for each fill line in Y (always even number)
                 for pts in range(int(len(fill_line[1]) / 2)):
-                    row1 = [fill_line[1][2 * pts], fill_line[0], z, 0]
-                    row2 = [fill_line[1][2 * pts + 1], fill_line[0], z, 1]
+                    row1 = [round(fill_line[1][2*pts]/c, d), round(fill_line[0]/c, d), round(z/c, d), 0]
+                    row2 = [round(fill_line[1][2*pts+1]/c, d), round(fill_line[0]/c, d), round(z/c, d), 1]
                     path_writer.writerow(row1)
                     path_writer.writerow(row2)
 

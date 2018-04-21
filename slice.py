@@ -135,15 +135,15 @@ def build_contours(edge_points):
     return contours
 
 
-def infill(pairs, dir, spacing):
+def infill(pairs, direct, spacing):
     # Function to compute the line infill spacing for the 3D printing
     # direction: X=0, Y=1
     fill = []
 
     if len(pairs) != 0:
         # Calculate max and min dimensions of the sliced points
-        min_pos = min(np.min(pairs[:, dir]), np.min(pairs[:, dir+2]))
-        max_pos = max(np.max(pairs[:, dir]), np.max(pairs[:, dir+2]))
+        min_pos = min(np.min(pairs[:, direct]), np.min(pairs[:, direct+2]))
+        max_pos = max(np.max(pairs[:, direct]), np.max(pairs[:, direct+2]))
 
         num_passes = int((max_pos - min_pos)/spacing)  # Number of infill lines to cover the object
 
@@ -151,18 +151,18 @@ def infill(pairs, dir, spacing):
             loc = min_pos + fill_pass*spacing  # Increment fill pass position by the infill spacing variable
             pts = []
             for segment in pairs:
-                if segment[dir] < loc < segment[dir+2] or segment[dir+2] < loc < segment[dir]:
+                if segment[direct] < loc < segment[direct+2] or segment[direct+2] < loc < segment[direct]:
                     m = (segment[3]-segment[1])/(segment[2]-segment[0])
                     # Fill lines at x-locations
-                    if dir == 0:
-                        pts.append(m * (loc - segment[dir]) + segment[dir + 1])  # y = m(x_loc-x1)+y1
+                    if direct == 0:
+                        pts.append(m * (loc - segment[direct]) + segment[direct+1])  # y = m(x_loc-x1)+y1
                     # Fill lines at y-locations
                     else:
                         # Check if the slope is infinite (#/0)
                         if isinf(m):
-                            pts.append(segment[dir+1])  # Intercept at either x-location of the segment
+                            pts.append(segment[direct+1])  # Intercept at either x-location of the segment
                         else:
-                            pts.append((loc-segment[dir])/m + segment[dir-1])  # x = (y_loc-y1)/m + x1
+                            pts.append((loc-segment[direct])/m + segment[direct-1])  # x = (y_loc-y1)/m + x1
             pts.sort()  # Sort points in order to construct infill path lines
             fill.append((loc, pts))  # Append to fill path list
 

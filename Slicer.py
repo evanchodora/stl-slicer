@@ -67,10 +67,17 @@ class DrawObject:
     # Function to run the slicer algorithm
     def slice_geometry(self):
 
-        # Calculate slice thickness/number of slices parameters
+        # Calculate slice thickness/number of slices parameters and infill spacing
         h = ydim.get()
         step = slice_size.get()
+        # Check for incorrect slice heights
+        if step <= 0:
+            step = 0.1
         num_steps = int(h/step)
+        space = infill_space.get()
+        # Check for incorrect infill spacing
+        if space <= 0:
+            space = 0.1
 
         # Try to delete previous output files (SVGs and path CSV) if they exist
         outputdir = 'outputs'
@@ -94,9 +101,9 @@ class DrawObject:
             # Compute the clipped point pairs at the current slice z coordinate
             point_pairs = slice.compute_points_on_z(geometry, z, xdim.get(), ydim.get(), zdim.get())
             # Create infill paths (X direction)
-            fillx = slice.infill(point_pairs, 0, infill_space.get())
+            fillx = slice.infill(point_pairs, 0, space)
             # Create infill path (Y direction)
-            filly = slice.infill(point_pairs, 1, infill_space.get())
+            filly = slice.infill(point_pairs, 1, space)
             # Output the slices to svg files for confirmation/viewing
             path.svgcreate(point_pairs, z, xdim.get(), fillx, filly)
             # Run the contour building algorithm to sort the point pairs into continuous contour sets
@@ -107,7 +114,7 @@ class DrawObject:
         # Info box to give information when the slicer is completed
         messagebox.showinfo('Slicing Complete!',
                             'The slicer has completed slicing the model successfully! \n\n'
-                            'Check the created "outputs" folder for an SVG file of each slice of the model and '
+                            'Check the created "outputs" folder for an SVG file of each slice of the model and'
                             ' the "path.csv" file for the print head coordinate instructions')
 
 
@@ -283,8 +290,29 @@ def save_click():
 def about_popup():
     # Info box about the software from the Help menu
     messagebox.showinfo('About STL Slicer',
-                        'Created by Evan Chodora, 2018\n\n Designed to open and view ASCII STL files and perform'
-                        ' geometry slicing and 3D printer path generation')
+                        'Created by Evan Chodora, 2018\n\nhttps://github.com/evanchodora\n\n'
+                        'Designed to open and view ASCII STL files and perform'
+                        ' geometry slicing and 3D printer path and infill generation')
+
+
+def settings_popup():
+    # Info box about the slicer settings options
+    messagebox.showinfo('Slicer Settings',
+                        'Slice Height:\n\nEnter a value in inches for the vertical spacing between consecutive STL'
+                        ' slices in the Z direction.\n\n'
+                        'Infill Spacing:\n\nEnter a value in inches for the spacing between the passes of the'
+                        ' grid infill pattern.')
+
+
+def output_popup():
+    # Info box about the slicer output files
+    messagebox.showinfo('Output Files',
+                        'SVG Files:\n\nThe slicer outputs an SVG file for each vertical slice of the geometry for'
+                        ' visualization and diagnostics of the print edge contours and infill patterns.\n\n'
+                        'CSV File:\n\nThe slicer outputs a "path.csv" file describing the position of the print head'
+                        ' during printing. Each row represents an X,Y,Z coordinate in space and fourth value indicates'
+                        ' whethere the print head should be on (1) or off (0) when making the move to the position from'
+                        'its previous position.')
 
 
 # ****** Initialize Main Window ******
@@ -428,7 +456,7 @@ image.place(x=975, rely=0.825, anchor="c")
 # ****** Define Default 3D Printing Options and View Type ******
 
 view = StringVar()
-view.set('hide')
+view.set('wire')
 # Dimensions of the print bed in mm
 xdim = DoubleVar()
 xdim.set(8*25.4)
@@ -473,6 +501,8 @@ subMenu.add_command(label="Run Slicer", command=lambda: DrawObject.slice_geometr
 # Create "Help" submenu
 subMenu = Menu(menu, tearoff=False)
 menu.add_cascade(label="Help", menu=subMenu)
+subMenu.add_command(label="Slicer Settings", command=settings_popup)
+subMenu.add_command(label="Slicer Outputs", command=output_popup)
 subMenu.add_command(label="About", command=about_popup)
 
 # ****** Control Panel ******
