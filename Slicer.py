@@ -79,8 +79,12 @@ class DrawObject:
         if space <= 0:
             space = 0.1
 
-        # Try to delete previous output files (SVGs and path CSV) if they exist
+        # Make sure the output directory exists for saving the outputs
         outputdir = 'outputs'
+        if not os.path.exists(outputdir):
+            os.makedirs(outputdir)
+
+        # Try to delete previous output files (SVGs and path CSV) if they exist
         try:
             list(map(os.unlink, (os.path.join(outputdir, f) for f in os.listdir(outputdir))))
         except OSError:
