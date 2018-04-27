@@ -12,7 +12,12 @@ import path
 from drawlines import draw_lines
 
 '''
-Program designed to open and view ASCII STL files
+Program designed to open and view ASCII STL files and then slice them for 3D printing operations. Supports variable 
+slice heights and spacing between infill grid lines. Geometry moved to fit within a 8x8x6 inch print bed as large as
+possible according to the part orientation.
+Output files consist of an SVG file for each slice of the model showing the model outlines and the infill pattern and a
+CSV file that lists the coordinates of the print head at different times and whether or not the extruder is on during
+the move to that position.
 
 Evan Chodora, 2018
 https://github.com/evanchodora/stl-slicer
@@ -32,11 +37,12 @@ class DrawObject:
     # Function to plot the initial object after loading
     def plot(self, loc):
 
+        # Orient the object to the origin and scale to fit the print bed dimensions
         self.model.geometry = orient.to_origin(self.model.geometry)
         self.model.geometry = orient.fit_bed(self.model.geometry, xdim.get(), ydim.get(), zdim.get())
-        # Apply selected perspective with appropriate settings of fz, phi, and theta
+        # Apply isometric perspective to the geometry
         plot_geometry, camera = gtransform.perspective(self.model.geometry)
-        # Draw lines between points and clip to viewing window based on window height and width
+        # Draw lines between points of the geometry faces
         plot_geometry = draw_lines(plot_geometry, self.model.normal, camera, view.get())
 
         # Clear pixel array to white and then change each pixel color based on the XY pixel map
@@ -115,6 +121,10 @@ class DrawObject:
             # Create printer head path CSV file (main path and infill pattern)
             path.headpath(contour, fillx, filly, z)
 
+        # Calculate time vector describing the head motion and add to the CSV file
+        speed = 1  # Print head speed (inch/sec)
+        path.time_calc(speed)
+
         # Info box to give information when the slicer is completed
         messagebox.showinfo('Slicing Complete!',
                             'The slicer has completed slicing the model successfully! \n\n'
@@ -176,7 +186,7 @@ def file_select():
         DrawObject.plot(file_select.stlobject, screen)  # Run initial object plot function for the class
 
 
-# Class to create a perspective settings popup dialog box for user input
+# Class to create a slicer settings popup dialog box for user input
 class SettingsDialog:
     def __init__(self, parent):
         top = self.top = Toplevel(parent)  # Use Tkinter top for a separate popup GUI
@@ -270,10 +280,10 @@ class SettingsDialog:
         self.NameLabel = Label(top, text='Slicer Settings').place(x=50, rely=.1, anchor="c")
         self.zLabel = Label(top, text='Slice Height (in)').place(x=55, rely=.3, anchor="c")
         self.InfillLabel = Label(top, text='Infill Spacing (in)').place(x=55, rely=.6, anchor="c")
-        self.zBox = Entry(top)  # Fz entry box
+        self.zBox = Entry(top)  # Z spacing entry box
         self.zBox.place(x=165, rely=.3, anchor="c", width=100)
         self.zBox.insert(0, slice_size.get()/25.4)  # Prefill with Slice Height variable value (inches)
-        self.InfillBox = Entry(top)  # Phi entry box
+        self.InfillBox = Entry(top)  # Infill spacing entry box
         self.InfillBox.place(x=165, rely=.6, anchor="c", width=100)
         self.InfillBox.insert(0, infill_space.get()/25.4)  # Prefill with infill grid spacing variable value (inches)
 
@@ -411,6 +421,7 @@ pygame.display.init()
 pygame.display.flip()
 
 # Code to load a base64 version of the coordinate axes to display on the GUI for the print bed coordinate system
+# Load and place on the bottom right of the window below the controls for user reference
 coords = \
         "iVBORw0KGgoAAAANSUhEUgAAAHgAAABiCAYAAACbKRcvAAAABHNCS\
         VQICAgIfAhkiAAAAAlwSFlzAAAHsgAAB7IBq3xA6wAAABl0RVh0U2\
@@ -461,17 +472,17 @@ image.place(x=975, rely=0.825, anchor="c")
 
 view = StringVar()
 view.set('wire')
-# Dimensions of the print bed in mm
+# Default dimensions of the print bed in mm
 xdim = DoubleVar()
 xdim.set(8*25.4)
 ydim = DoubleVar()
 ydim.set(6*25.4)
 zdim = DoubleVar()
 zdim.set(8*25.4)
-# Slice step size in mm
+# Default slice step size in mm
 slice_size = DoubleVar()
 slice_size.set(0.5*25.4)
-# Infill grid spacing in mm
+# Default infill grid spacing in mm
 infill_space = DoubleVar()
 infill_space.set(0.5*25.4)
 

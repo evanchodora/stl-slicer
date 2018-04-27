@@ -3,8 +3,7 @@ import gtransform
 
 '''
 Code to orient the initial geometry centered upon the geometric origin
-Then scales the object to fit within a window of the width and height supplied based on an isometric perspective
-and a supplied screen width and height in pixels
+Then scales the object to fit within the viewing window and a supplied print bed size
 
 Evan Chodora, 2018
 https://github.com/evanchodora/stl-slicer
@@ -33,8 +32,5 @@ def fit_bed(geometry, xdim, ydim, zdim):
     # Compute object scaling based on the minimum ratio between the print bed dimensions and the object size
     scale = min(xdim/max_size[0], ydim/max_size[1], zdim/max_size[2])
     geometry = gtransform.scale(geometry, 1 / scale)  # Apply global scaling with appropriate factor
-
-    # max_size = np.max(geometry, axis=0)  # Max X,Y,Z values of the object
-    # geometry = gtransform.translate(geometry, xdim/2, max_size[1], zdim/2)  # Translate object into print bed center
 
     return geometry
