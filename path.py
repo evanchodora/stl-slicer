@@ -51,7 +51,7 @@ def headpath(contour, fillx, filly, z):
     d = 4  # Number of decimals places to round the coordinates (0.0001 in)
 
     if len(contour) != 0:
-        contour_num = 1  # Start with the first (only possibly only contour on that slice)
+        contour_num = 1  # Start with the first (possibly the only contour on that slice)
         start = 1  # Indicates the start of a contour to handle contour looping
         begin = []
         # Open the path.csv file to append new lines, create it if it does not exist

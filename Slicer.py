@@ -79,7 +79,7 @@ class DrawObject:
         # Check for incorrect slice heights (negative or zero)
         if step <= 0:
             step = 0.1
-        num_steps = int(h/step)
+        num_steps = int(h/step)  # Calculate number of slices
         space = infill_space.get()
         # Check for incorrect infill spacing (negative or zero)
         if space <= 0:
