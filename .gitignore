@@ -6,3 +6,5 @@ outputs/*
 .idea/stl-slicer.iml
 .idea/modules.xml
 .idea/misc.xml
+dist/*
+build/*
