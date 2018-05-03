@@ -76,12 +76,12 @@ class DrawObject:
         # Calculate slice thickness/number of slices parameters and infill spacing
         h = ydim.get()
         step = slice_size.get()
-        # Check for incorrect slice heights
+        # Check for incorrect slice heights (negative or zero)
         if step <= 0:
             step = 0.1
         num_steps = int(h/step)
         space = infill_space.get()
-        # Check for incorrect infill spacing
+        # Check for incorrect infill spacing (negative or zero)
         if space <= 0:
             space = 0.1
 
@@ -324,9 +324,9 @@ def output_popup():
                         'SVG Files:\n\nThe slicer outputs an SVG file for each vertical slice of the geometry for'
                         ' visualization and diagnostics of the print edge contours and infill patterns.\n\n'
                         'CSV File:\n\nThe slicer outputs a "path.csv" file describing the position of the print head'
-                        ' during printing. Each row represents an X,Y,Z coordinate in space and fourth value indicates'
-                        ' whethere the print head should be on (1) or off (0) when making the move to the position from'
-                        'its previous position.')
+                        ' during printing. Each row represents the elapsed time in seconds, the X,Y,Z coordinate in'
+                        ' space and fifth value indicates whether the print head should be on (1) or off (0) when'
+                        ' making the move to the position from its previous position.')
 
 
 # ****** Initialize Main Window ******

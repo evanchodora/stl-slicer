@@ -84,7 +84,7 @@ def compute_points_on_z(geometry, z, xdim, ydim, zdim):
             pairs.append([line[2][0], line[2][1]])
 
         # Only need to keep point pairs (sets of 1 and 3 are not needed - these will be inherently handled by a point
-        # pair from a face somehwere else in the object geometry)
+        # pair from a face somewhere else in the object geometry)
         if len(pairs) == 2:
             # Reject points if they are the same (within tolerance) - too close together, not a path pair for printing
             if abs(pairs[0][0] - pairs[1][0]) < tol and abs(pairs[0][1] - pairs[1][1]) < tol:
@@ -161,7 +161,7 @@ def infill(pairs, direct, spacing):
         for fill_pass in range(num_passes+1):
             loc = min_pos + fill_pass*spacing  # Increment fill pass position by the infill spacing variable
             pts = []
-            # Loop over each segment in the list of countour point pairs
+            # Loop over each segment in the list of contour point pairs
             for segment in pairs:
                 # If the line falls on either side of the current fill pass line position
                 if segment[direct] < loc < segment[direct+2] or segment[direct+2] < loc < segment[direct]:
